@@ -34,14 +34,11 @@ export class RequestsService {
     }
 
     if (query.createdFrom != null) {
-      params = params.set('createdFrom', new Date(query.createdFrom).toISOString());
+      params = params.set('createdFrom', query.createdFrom);
     }
 
     if (query.createdTo != null) {
-      // עד סוף היום
-      const to = new Date(query.createdTo);
-      to.setHours(23, 59, 59, 999);
-      params = params.set('createdTo', to.toISOString());
+      params = params.set('createdTo', query.createdTo);
     }
 
     params = params.set('sortBy', query.sortBy);

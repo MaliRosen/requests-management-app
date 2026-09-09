@@ -7,7 +7,7 @@ Full-stack feature: חיפוש, סינון, מיון ועימוד ברמת ה-DB
 ## הרצת Backend
 
 ```bash
-dotnet run --project src/Requests.Api
+dotnet run --project server/src/Requests.Api
 ```
 
 API זמין ב-`http://localhost:5000`.
@@ -31,13 +31,13 @@ Frontend זמין ב-`http://localhost:4200`.
 ## הרצת בדיקות
 
 ```bash
-dotnet test tests/Requests.Tests/Requests.Tests.csproj
+dotnet test server/tests/Requests.Tests/Requests.Tests.csproj
 ```
 
 לצפייה בשם כל בדיקה בנפרד:
 
 ```bash
-dotnet test tests/Requests.Tests/Requests.Tests.csproj --logger "console;verbosity=normal"
+dotnet test server/tests/Requests.Tests/Requests.Tests.csproj --logger "console;verbosity=normal"
 ```
 
 16 בדיקות unit ל-`RequestService`: סינון, הרשאות, מיון, pagination, שילוב פילטרים, עמוד 2, תוצאה ריקה. רצות in-memory ללא DB.

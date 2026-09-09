@@ -120,7 +120,6 @@ export class App implements OnInit {
       createdTo: undefined,
       ...changes,
     };
-    console.log('sending query:', this.query);
     this.loadRequests();
   }
 

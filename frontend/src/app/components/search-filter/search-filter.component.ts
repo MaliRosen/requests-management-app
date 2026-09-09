@@ -136,6 +136,7 @@ export class SearchFilterComponent implements OnInit, OnDestroy {
       filter.createdTo = raw.createdTo;
     }
 
+    console.log('emitFilter:', JSON.stringify(filter));
     this.filterChange.emit(filter);
   }
 }
