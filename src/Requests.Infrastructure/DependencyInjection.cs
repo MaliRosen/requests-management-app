@@ -11,8 +11,10 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services)
     {
+        // SQLite: קובץ אחד על הדיסק — אינדקסים פועלים בפועל, נתונים נשמרים בין הפעלות.
+        // להחלפה ל-SQL Server בפרודקשן: החלף ב-UseSqlServer(connectionString)
         services.AddDbContext<RequestsDbContext>(options =>
-            options.UseInMemoryDatabase("CandidateRequests"));
+            options.UseSqlite("Data Source=requests.db"));
 
         services.AddScoped<IRequestRepository, RequestRepository>();
         services.AddScoped<IRequestService, RequestService>();

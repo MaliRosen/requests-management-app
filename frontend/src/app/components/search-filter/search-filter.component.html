@@ -1,54 +1,51 @@
 <form [formGroup]="form" class="search-filter">
   <div class="filter-row">
 
-    <!-- Request Number -->
+    <!-- מספר בקשה -->
     <div class="filter-field">
-      <label for="requestNumber">Request Number</label>
+      <label for="requestNumber">מספר בקשה</label>
       <input
         id="requestNumber"
         type="text"
         formControlName="requestNumber"
-        placeholder="Search by request number…"
+        placeholder="חיפוש חלקי..."
+        autocomplete="off"
       />
     </div>
 
-    <!-- Status multi-select -->
-    <div class="filter-field">
-      <label for="status">Status</label>
-      <select
-        id="status"
-        formControlName="status"
-        multiple
-        size="4"
-        aria-label="Filter by status"
-      >
-        <option
-          *ngFor="let opt of statusOptions"
-          [value]="opt.value"
-        >{{ opt.label }}</option>
-      </select>
+    <!-- סטטוס — checkboxes -->
+    <div class="filter-field filter-field--checkboxes">
+      <span class="filter-label">סטטוס</span>
+      <div class="checkbox-group">
+        <label *ngFor="let opt of statusOptions" class="checkbox-option">
+          <input
+            type="checkbox"
+            [checked]="isStatusChecked(opt.value)"
+            (change)="onStatusChange(opt.value, $any($event.target).checked)"
+          />
+          {{ opt.label }}
+        </label>
+      </div>
     </div>
 
-    <!-- Request Type multi-select -->
-    <div class="filter-field">
-      <label for="requestType">Request Type</label>
-      <select
-        id="requestType"
-        formControlName="requestType"
-        multiple
-        size="4"
-        aria-label="Filter by request type"
-      >
-        <option
-          *ngFor="let opt of requestTypeOptions"
-          [value]="opt.value"
-        >{{ opt.label }}</option>
-      </select>
+    <!-- סוג בקשה — checkboxes -->
+    <div class="filter-field filter-field--checkboxes">
+      <span class="filter-label">סוג בקשה</span>
+      <div class="checkbox-group">
+        <label *ngFor="let opt of requestTypeOptions" class="checkbox-option">
+          <input
+            type="checkbox"
+            [checked]="isTypeChecked(opt.value)"
+            (change)="onTypeChange(opt.value, $any($event.target).checked)"
+          />
+          {{ opt.label }}
+        </label>
+      </div>
     </div>
 
-    <!-- Created From date -->
+    <!-- תאריך מ -->
     <div class="filter-field">
-      <label for="createdFrom">Created From</label>
+      <label for="createdFrom">מתאריך</label>
       <input
         id="createdFrom"
         type="date"
@@ -56,15 +53,28 @@
       />
     </div>
 
-    <!-- Created To date -->
+    <!-- תאריך עד -->
     <div class="filter-field">
-      <label for="createdTo">Created To</label>
+      <label for="createdTo">עד תאריך</label>
       <input
         id="createdTo"
         type="date"
         formControlName="createdTo"
+        [class.input-error]="dateRangeError"
       />
     </div>
 
+  </div>
+
+  <!-- שגיאת טווח תאריכים -->
+  <div *ngIf="dateRangeError" class="date-range-error">
+    {{ dateRangeError }}
+  </div>
+
+  <!-- כפתור נקה -->
+  <div class="filter-actions">
+    <button type="button" class="btn-clear" (click)="clearFilters()">
+      נקה סינון
+    </button>
   </div>
 </form>

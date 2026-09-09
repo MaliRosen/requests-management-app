@@ -1,1 +1,25 @@
-/* You can add global styles to this file, and also import other style files */
+/* ===== Global Styles ===== */
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  direction: rtl;
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+  font-size: 16px;
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+button {
+  font-family: inherit;
+}
+
+input, select {
+  font-family: inherit;
+}

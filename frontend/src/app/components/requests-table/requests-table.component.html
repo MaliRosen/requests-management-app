@@ -1,4 +1,5 @@
 <div class="requests-table-container">
+
   <div *ngIf="items.length === 0" class="empty-message">
     לא נמצאו בקשות התואמות לחיפוש
   </div>
@@ -6,7 +7,10 @@
   <table *ngIf="items.length > 0" class="requests-table">
     <thead>
       <tr>
-        <th *ngFor="let col of columns" (click)="onSort(col.key)" class="sortable-header">
+        <th *ngFor="let col of columns"
+            (click)="onSort(col.key)"
+            class="sortable-header"
+            [class.sorted]="col.key === sortBy">
           {{ col.label }}
           <span class="sort-indicator">{{ getSortIndicator(col.key) }}</span>
         </th>
@@ -15,12 +19,22 @@
     <tbody>
       <tr *ngFor="let item of items">
         <td>{{ item.id }}</td>
-        <td>{{ item.requestNumber }}</td>
-        <td>{{ item.status }}</td>
-        <td>{{ item.requestType }}</td>
-        <td>{{ item.createdAt }}</td>
+        <td class="request-number">{{ item.requestNumber }}</td>
+        <td>
+          <span class="badge badge--status badge--status-{{ item.status }}">
+            {{ statusLabels[item.status] }}
+          </span>
+        </td>
+        <td>
+          <span class="badge badge--type">
+            {{ typeLabels[item.requestType] }}
+          </span>
+        </td>
+        <!-- date pipe: מציג dd/MM/yyyy במקום ISO string גולמי -->
+        <td>{{ item.createdAt | date:'dd/MM/yyyy' }}</td>
         <td>{{ item.ownerId }}</td>
       </tr>
     </tbody>
   </table>
+
 </div>

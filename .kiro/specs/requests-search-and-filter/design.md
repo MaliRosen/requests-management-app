@@ -39,7 +39,8 @@
 └────────────────┬────────────────────────┘
                  │
 ┌────────────────▼────────────────────────┐
-│         EF Core / SQL DB                │
+│         EF Core / SQLite (Dev)          │
+│  קובץ requests.db — אינדקסים פועלים   │
 │  כל הסינון/מיון/עימוד קורה ב-SQL       │
 └─────────────────────────────────────────┘
 ```
@@ -89,6 +90,23 @@ public sealed record PagedResult<T>(
 11. ביצוע:    ToListAsync()
 ```
 
+### אינדקסים ב-DbContext
+
+כדי לתמוך בביצועים על מיליוני רשומות, `RequestsDbContext.OnModelCreating` מגדיר:
+
+```csharp
+entity.HasIndex(r => r.Status);                          // סינון לפי סטטוס
+entity.HasIndex(r => r.RequestType);                     // סינון לפי סוג
+entity.HasIndex(r => r.CreatedAt);                       // מיון ברירת מחדל
+entity.HasIndex(r => r.RequestNumber);                   // חיפוש חלקי
+entity.HasIndex(r => r.AssignedToUserId);                // חצי מה-ownership filter
+entity.HasIndex(r => new { r.OwnerId, r.CreatedAt });    // composite — ownership + sort
+```
+
+ה-Composite Index על `(OwnerId, CreatedAt)` מייעל את הקייס הנפוץ ביותר: משתמש רגיל מסנן לפי `OwnerId` ואז ממיין לפי `CreatedAt`. ה-DB נכנס לאינדקס לפי `OwnerId` ומקבל תת-קבוצה כבר ממוינת לפי תאריך — בלי Full Table Scan.
+
+**הערה:** ב-SQLite (Dev) האינדקסים יוצרים בפועל דרך `EnsureCreated()` ב-`Program.cs`. ב-InMemory הם מתעלמים לגמרי — לכן עברנו ל-SQLite.
+
 ### ולידציית קלט
 
 הולידציה קורית ב-Controller דרך model binding + בדיקות ידניות:
@@ -96,36 +114,50 @@ public sealed record PagedResult<T>(
 - `createdFrom > createdTo` → 400
 - `page < 1` או `pageSize < 1` או `pageSize > 200` → 400
 - שדה `sortBy` לא מוכר → 400 עם רשימת השדות המותרים
-- `X-User-Id` חסר או לא תקין → 400
+- JWT token חסר או לא תקין → 401 (מטופל אוטומטית על ידי `[Authorize]`)
 
-### תכנון Angular Frontend
+### תכנון Angular Frontend (Standalone Architecture)
 
 ```
 src/app/
 ├── models/
-│   ├── request.model.ts          # ממשק RequestDto
-│   └── paged-result.model.ts     # ממשק PagedResult<T>
+│   ├── request.model.ts          # ממשק RequestDto + enums
+│   ├── paged-result.model.ts     # ממשק PagedResult<T>
+│   └── search-query.model.ts     # ממשק SearchQuery
 ├── services/
-│   └── requests.service.ts       # קריאות HttpClient ל-API
+│   └── requests.service.ts       # קריאות HttpClient ל-API (providedIn: 'root')
 ├── components/
-│   ├── search-filter/            # טופס reactive: טקסט, multi-select, תאריכים
-│   ├── requests-table/           # טבלה עם כותרות ממוינות
-│   └── pagination/               # כפתורי הבא/הקודם, מידע עמוד
-└── app.component.ts              # מתאם בין כל הרכיבים
+│   ├── search-filter/            # standalone: checkboxes, טקסט, תאריכים, נקה
+│   ├── requests-table/           # standalone: טבלה, מיון, labels בעברית, date pipe
+│   └── pagination/               # standalone: הבא/הקודם, ספירה
+└── app.ts                        # standalone root: מתאם, state, bootstrap
 ```
+
+**מדוע Standalone ולא NgModule:**
+Angular 17+ ממליץ על standalone. כל קומפוננטה מגדירה את ה-dependencies שלה ב-`imports` — אין מודול מרכזי שמנהל הצהרות. זה מקל על הבנת התלויות ומקצר את ה-boilerplate.
 
 **זרימת נתונים:**
 ```
-המשתמש מקליד/בוחר ב-SearchFilterComponent
-    → debounce 500ms (שדה טקסט) / מיידי (dropdowns)
-    → AppComponent מקבל שינויי פילטר
-    → מאפס page ל-1
+המשתמש מסמן checkbox / מקליד / בוחר תאריך ב-SearchFilterComponent
+    → debounce 500ms (שדה טקסט) / מיידי (checkboxes, תאריכים)
+    → App מקבל filterChange, מאפס page ל-1
     → קורא ל-RequestsService.search(query)
     → מציג spinner טעינה
     → בהצלחה: מעביר נתונים ל-RequestsTableComponent + PaginationComponent
     → בשגיאה: מציג הודעת שגיאה
-    → ברשימה ריקה: מציג "לא נמצאו תוצאות"
+    → ברשימה ריקה: מציג "לא נמצאו בקשות התואמות לחיפוש"
 ```
+
+**טופס סינון:**
+- checkboxes לסטטוס וסוג בקשה — ניתן לבחור מרובים בלחיצה ישירה, ללא Ctrl+Click
+- ערכי checkbox מנוהלים ב-`Set<RequestStatus>` ו-`Set<RequestType>` — ערכים מספריים מובטחים (ללא בעיית string casting של native select)
+- כפתור "נקה סינון" מאפס את כל השדות בבת אחת
+- ערכי הסינון hard-coded בקליינט כי `RequestStatus` ו-`RequestType` הם enum קבוע בקוד — שינויהם ממילא מצריך פריסה מחדש. אם בעתיד יעברו לניהול דינמי, הגישה הנכונה היא `GET /api/requests/metadata` שהקליינט יקרא בהפעלה.
+
+**טבלה:**
+- `statusLabels` ו-`typeLabels` — Record שממפה מספר enum לשם תצוגה בעברית
+- `| date:'dd/MM/yyyy'` — Angular DatePipe מעצב את `createdAt`
+- כותרות עמודות בעברית
 
 **מיון:**
 - לחיצה על כותרת עמודה קובעת `sortBy` ומחליפה `sortDirection` (asc ↔ desc)

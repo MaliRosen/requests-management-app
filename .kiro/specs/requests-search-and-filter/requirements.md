@@ -18,24 +18,25 @@
 | **Application_Layer** | שכבת `Requests.Application` — לוגיקת עסקים ו-interfaces |
 | **Repository** | `RequestRepository` — ממשה את `IRequestRepository` מול EF Core |
 | **Service** | `RequestService` — ממשה את `IRequestService`, נקרא מה-Controller |
-| **DB** | מסד הנתונים — EF Core InMemory (Dev) / SQL Server (Prod) |
+| **DB** | מסד הנתונים — EF Core SQLite (Dev, קובץ `requests.db`) / SQL Server (Prod) |
 | **IQueryable** | ממשק EF Core המאפשר בניית שאילתות LINQ שמתורגמות ל-SQL ומבוצעות ב-DB |
 | **Request** | ישות דומיין: `Id`, `RequestNumber`, `CustomerId`, `OwnerId`, `AssignedToUserId`, `Status`, `RequestType`, `CreatedAt`, `UpdatedAt` |
 | **RequestStatus** | Enum: `New=1`, `InProgress=2`, `Completed=3`, `Cancelled=4` |
 | **RequestType** | Enum: `General=1`, `Legal=2`, `Payment=3`, `Appeal=4` |
 | **SearchQuery** | אובייקט query-parameters המכיל את כל פרמטרי הסינון, המיון והעימוד |
 | **PagedResult** | אובייקט תגובה המכיל רשימת פריטים, מספר עמוד נוכחי, גודל עמוד וסך-הכל רשומות |
-| **CurrentUser** | המשתמש המגיש את הבקשה; מזוהה דרך headers `X-User-Id` ו-`X-Is-Admin` |
-| **Admin** | משתמש עם `X-Is-Admin: true` — רשאי לראות את כל הבקשות |
-| **RegularUser** | משתמש עם `X-Is-Admin: false` — רשאי לראות רק בקשות שבהן `OwnerId == CurrentUser.Id` או `AssignedToUserId == CurrentUser.Id` |
+| **CurrentUser** | המשתמש המגיש את הבקשה; מזוהה דרך JWT token עם claims: `userId` ו-`isAdmin` |
+| **Admin** | משתמש עם claim `isAdmin: true` — רשאי לראות את כל הבקשות |
+| **RegularUser** | משתמש עם claim `isAdmin: false` — רשאי לראות רק בקשות שבהן `OwnerId == CurrentUser.Id` או `AssignedToUserId == CurrentUser.Id` |
 | **Microservice** | שירות עצמאי עם מסד נתונים ו-deployment נפרדים |
 | **MessageBroker** | Azure Service Bus — מתווך הודעות אסינכרוני |
 | **OutboxPattern** | דפוס שמבטיח כי אירוע ופרסומו נשמרים באטומיות בטרנזקציה אחת |
 | **NotificationService** | Microservice אחראי על שליחת התראות למשתמשים |
 | **RequestsService** | Microservice אחראי על ניהול מחזור חיי הבקשות |
 | **Frontend** | אפליקציית Angular המתממשקת עם ה-API |
-| **FilterForm** | טופס סינון ב-Frontend |
+| **FilterForm** | טופס סינון ב-Frontend — checkboxes לסטטוס/סוג, טקסט, תאריכים |
 | **PaginationControls** | רכיב ניווט בין עמודים ב-Frontend |
+| **EnumOptions** | ערכי הסינון hard-coded בקליינט כי הם enum קבוע בקוד. אם יעברו לניהול דינמי — יש להוסיף `GET /api/requests/metadata` |
 
 ---
 
@@ -77,7 +78,7 @@
 
 3. THE Repository SHALL מיישם את מגבלת ה-ownership כחלק מה-`IQueryable` לפני ביצוע השאילתה ב-DB.
 
-4. IF `X-User-Id` header חסר או אינו מספר שלם תקין, THEN THE API SHALL מחזיר תגובה עם HTTP 400 Bad Request ומסר שגיאה מפורש.
+4. IF ה-JWT token חסר, לא תקין, או פג תוקף, THEN THE API SHALL מחזיר HTTP 401 Unauthorized אוטומטית.
 
 ---
 
@@ -119,6 +120,24 @@
 
 ---
 
+### דרישה 4א: ביצועים — אינדקסים ונתוני פיתוח
+
+**User Story:** כמפתח, אני רוצה שסביבת הפיתוח תשקף תנאי ביצועים ריאליים, כדי שאוכל לאמת שה-IQueryable pipeline עובד נכון על כמות נתונים משמעותית.
+
+#### קריטריוני קבלה
+
+1. THE DbContext SHALL מגדיר אינדקסים על השדות: `Status`, `RequestType`, `CreatedAt`, `RequestNumber`, `AssignedToUserId`.
+
+2. THE DbContext SHALL מגדיר Composite Index על `(OwnerId, CreatedAt)` — מייעל את הקייס הנפוץ ביותר: משתמש רגיל מסנן לפי ownership ואז ממיין לפי תאריך.
+
+3. THE DbSeeder SHALL יוצר לפחות 100,000 רשומות מדומות בסביבת הפיתוח, בhatch של 1,000 כדי לא לטעון הכל לזיכרון בבת אחת.
+
+4. THE Infrastructure SHALL משתמש ב-SQLite (קובץ `requests.db`) בסביבת הפיתוח, כך שהאינדקסים פועלים בפועל ולא מתעלמים.
+
+5. WHERE המערכת עוברת לפרודקשן, THE Infrastructure SHALL מאפשר החלפת SQLite ב-SQL Server בשינוי שורה אחת ב-`DependencyInjection.cs`, ללא שינוי בשאר הקוד.
+
+---
+
 ### דרישה 5: ולידציה של קלט
 
 **User Story:** כמפתח שמשלב עם ה-API, אני רוצה לקבל הודעות שגיאה ברורות כאשר שולחים ערכים לא תקינים, כדי שאוכל לזהות ולתקן בעיות במהירות.
@@ -145,7 +164,9 @@
 
 #### קריטריוני קבלה
 
-1. THE Frontend SHALL מציג FilterForm הכולל: שדה טקסט לחיפוש לפי `RequestNumber`, multi-select לסינון לפי `Status`, multi-select לסינון לפי `RequestType`, ו-date pickers לטווח `createdFrom`/`createdTo`.
+1. THE Frontend SHALL מציג FilterForm הכולל: שדה טקסט לחיפוש לפי `RequestNumber`, קבוצת checkboxes לסינון לפי `Status` (ניתן לבחור מרובים), קבוצת checkboxes לסינון לפי `RequestType` (ניתן לבחור מרובים), ו-date pickers לטווח `createdFrom`/`createdTo`.
+
+1a. THE Frontend SHALL מציג כפתור "נקה סינון" שמאפס את כל שדות הטופס בבת אחת.
 
 2. WHEN המשתמש משנה ערך כלשהו ב-FilterForm, THE Frontend SHALL שולח בקשה חדשה ל-API עם הפרמטרים המעודכנים תוך 500ms לאחר הפסקת הקלדה (debounce).
 
@@ -163,7 +184,7 @@
 
 #### קריטריוני קבלה
 
-1. THE Frontend SHALL מציג טבלת תוצאות עם העמודות: `Id`, `RequestNumber`, `Status`, `RequestType`, `CreatedAt`, `OwnerId`.
+1. THE Frontend SHALL מציג טבלת תוצאות עם העמודות: `Id`, `RequestNumber`, `Status`, `RequestType`, `CreatedAt`, `OwnerId`. ערכי `Status` ו-`RequestType` יוצגו כתוויות קריאות בעברית (לא כמספרים). עמודת `CreatedAt` תוצג בפורמט `dd/MM/yyyy`.
 
 2. WHEN המשתמש לוחץ על כותרת עמודה שניתנת למיון, THE Frontend SHALL שולח בקשה חדשה ל-API עם `sortBy=<שם העמודה>` ו-`sortDirection=asc`.
 

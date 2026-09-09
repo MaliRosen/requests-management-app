@@ -1,47 +1,102 @@
 .requests-table-container {
   width: 100%;
   overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .requests-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  background: #fff;
 
   thead {
-    background-color: #f5f5f5;
+    background: #f8fafc;
+    border-bottom: 2px solid #e2e8f0;
   }
 
-  th,
+  th, td {
+    padding: 10px 16px;
+    text-align: right;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  th {
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    transition: background 0.1s;
+
+    &:hover {
+      background: #f8fafc;
+    }
+
+    &:last-child td {
+      border-bottom: none;
+    }
+  }
+
   td {
-    padding: 10px 14px;
-    text-align: left;
-    border: 1px solid #ddd;
-  }
-
-  tbody tr:hover {
-    background-color: #f9f9f9;
+    color: #1e293b;
   }
 }
 
 .sortable-header {
   cursor: pointer;
   user-select: none;
-  white-space: nowrap;
 
   &:hover {
-    background-color: #e8e8e8;
+    background: #f1f5f9;
+    color: #1e293b;
+  }
+
+  &.sorted {
+    color: #3b82f6;
   }
 }
 
 .sort-indicator {
-  margin-left: 6px;
-  font-size: 0.75rem;
+  margin-right: 4px;
+  font-size: 0.7rem;
+  color: #3b82f6;
+}
+
+.request-number {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+// badge לסטטוס עם צבע לפי ערך
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+
+  &--type {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  // סטטוסים לפי ערך enum
+  &--status-1 { background: #dbeafe; color: #1d4ed8; } // New — כחול
+  &--status-2 { background: #fef9c3; color: #a16207; } // InProgress — צהוב
+  &--status-3 { background: #dcfce7; color: #15803d; } // Completed — ירוק
+  &--status-4 { background: #fee2e2; color: #b91c1c; } // Cancelled — אדום
 }
 
 .empty-message {
-  padding: 24px;
+  padding: 3rem;
   text-align: center;
-  color: #666;
+  color: #94a3b8;
   font-size: 1rem;
+  background: #fff;
 }

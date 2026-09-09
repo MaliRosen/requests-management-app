@@ -1,0 +1,26 @@
+<div class="login-container">
+  <div class="login-card">
+    <h1 class="login-title">ניהול בקשות</h1>
+    <p class="login-subtitle">בחר משתמש להתחברות</p>
+
+    <div *ngIf="error" class="error-message">{{ error }}</div>
+
+    <div class="user-list">
+      <button
+        *ngFor="let user of demoUsers"
+        class="user-btn"
+        [class.user-btn--admin]="user.userId === 3"
+        [disabled]="loading"
+        (click)="login(user)"
+      >
+        <span class="user-btn__label">{{ user.label }}</span>
+        <span class="user-btn__desc">{{ user.description }}</span>
+      </button>
+    </div>
+
+    <div *ngIf="loading" class="loading-indicator">
+      <span class="spinner"></span>
+      מתחבר...
+    </div>
+  </div>
+</div>

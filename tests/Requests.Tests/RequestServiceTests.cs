@@ -283,6 +283,71 @@ public class RequestServiceTests
         Assert.Equal(1, desc.Items[2].Id);
     }
 
+    // 8.12 Regular user + filter — ownership and filter apply together
+    [Fact]
+    public async Task Search_RegularUser_WithStatusFilter_SeesOnlyOwnedAndMatchingStatus()
+    {
+        var repository = new FakeRequestRepository(
+        [
+            CreateFull(1, RequestStatus.New,        RequestType.General), // owned, matches status
+            CreateFull(2, RequestStatus.InProgress, RequestType.General), // owned, wrong status
+            CreateFull(3, RequestStatus.New,        RequestType.General), // not owned, matches status
+        ]);
+        // override ownership
+        var requests = new List<Request>
+        {
+            new() { Id = 1, OwnerId = 1, AssignedToUserId = 0, Status = RequestStatus.New,        RequestType = RequestType.General, RequestNumber = "REQ-001", CustomerId = 1, CreatedAt = DateTime.UtcNow },
+            new() { Id = 2, OwnerId = 1, AssignedToUserId = 0, Status = RequestStatus.InProgress, RequestType = RequestType.General, RequestNumber = "REQ-002", CustomerId = 2, CreatedAt = DateTime.UtcNow },
+            new() { Id = 3, OwnerId = 9, AssignedToUserId = 0, Status = RequestStatus.New,        RequestType = RequestType.General, RequestNumber = "REQ-003", CustomerId = 3, CreatedAt = DateTime.UtcNow },
+        };
+
+        var service = new RequestService(new FakeRequestRepository(requests));
+        var result = await service.SearchAsync(
+            new SearchRequestsQuery(Status: [RequestStatus.New]),
+            currentUserId: 1, isAdministrator: false);
+
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal(1, result.Items[0].Id);
+    }
+
+    // 8.13 Page 2 returns correct items
+    [Fact]
+    public async Task Search_Page2_ReturnsCorrectItems()
+    {
+        var requests = Enumerable.Range(1, 5)
+            .Select(i => Create(i, ownerId: 1, assignedTo: 0))
+            .ToList();
+
+        var service = new RequestService(new FakeRequestRepository(requests));
+        var result = await service.SearchAsync(
+            new SearchRequestsQuery(SortBy: "Id", SortDirection: "asc", Page: 2, PageSize: 2),
+            currentUserId: 1, isAdministrator: true);
+
+        Assert.Equal(5, result.TotalCount);
+        Assert.Equal(2, result.Items.Count);
+        Assert.Equal(3, result.Items[0].Id);
+        Assert.Equal(4, result.Items[1].Id);
+    }
+
+    // 8.14 No results — TotalCount is 0 and Items is empty
+    [Fact]
+    public async Task Search_NoMatchingResults_ReturnsTotalCountZero()
+    {
+        var repository = new FakeRequestRepository(
+        [
+            CreateWithStatus(1, RequestStatus.New),
+            CreateWithStatus(2, RequestStatus.New)
+        ]);
+
+        var service = new RequestService(repository);
+        var result = await service.SearchAsync(
+            new SearchRequestsQuery(Status: [RequestStatus.Cancelled]),
+            currentUserId: 1, isAdministrator: true);
+
+        Assert.Equal(0, result.TotalCount);
+        Assert.Empty(result.Items);
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Helpers
     // ────────────────────────────────────────────────────────────────────────

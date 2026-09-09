@@ -1,37 +1,45 @@
-<div class="app-container">
-  <h1 class="app-title">ניהול בקשות</h1>
+<!-- דף Login — מוצג כשאין token תקין -->
+<app-login *ngIf="!isLoggedIn" (loggedIn)="onLoggedIn()"></app-login>
 
-  <!-- Search & Filter -->
+<!-- דף ראשי — מוצג אחרי login -->
+<div *ngIf="isLoggedIn" class="app-container">
+
+  <div class="app-header">
+    <h1 class="app-title">ניהול בקשות</h1>
+    <button class="btn-logout" (click)="onLogout()">התנתק</button>
+  </div>
+
   <app-search-filter
     (filterChange)="onFilterChange($event)">
   </app-search-filter>
 
-  <!-- Loading spinner -->
   <div *ngIf="loading" class="loading-indicator" aria-live="polite" aria-busy="true">
     <span class="spinner" aria-hidden="true"></span>
     <span>טוען נתונים...</span>
   </div>
 
-  <!-- Error message -->
+  <div *ngIf="dateRangeError" class="error-message" role="alert">
+    <span>{{ dateRangeError }}</span>
+  </div>
+
   <div *ngIf="error && !loading" class="error-message" role="alert">
     <span>{{ error }}</span>
   </div>
 
-  <!-- Results table -->
   <app-requests-table
-    *ngIf="!loading"
-    [items]="result?.items ?? []"
+    *ngIf="!loading && result && !dateRangeError"
+    [items]="result!.items"
     [sortBy]="query.sortBy"
     [sortDirection]="query.sortDirection"
     (sortChange)="onSortChange($event)">
   </app-requests-table>
 
-  <!-- Pagination -->
   <app-pagination
-    *ngIf="!loading && result"
+    *ngIf="!loading && result && !dateRangeError"
     [page]="result.page"
     [pageSize]="result.pageSize"
     [totalCount]="result.totalCount"
     (pageChange)="onPageChange($event)">
   </app-pagination>
+
 </div>

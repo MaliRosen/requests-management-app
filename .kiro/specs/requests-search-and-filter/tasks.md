@@ -43,8 +43,8 @@ Implement DB-level search, filter, sort and pagination on the existing `GET /api
 
 - [x] 5. Update `RequestsController` — add validation and new endpoint
   - Open `src/Requests.Api/Controllers/RequestsController.cs`
-  - Change the existing `Get` action to read and validate the `X-User-Id` header **strictly** (missing or non-integer → `return BadRequest("X-User-Id header is required and must be a valid integer")`)
-  - Add a new `[HttpGet("search")]` action (or replace the existing `[HttpGet]` action — match whichever keeps backward-compat) that:
+  - Add JWT authentication — `[Authorize]` על ה-Controller. זהות המשתמש נקראת מה-token claims (`userId`, `isAdmin`), לא מ-headers.
+  - Add a new `[HttpGet("search")]` action that:
     - Accepts `[FromQuery] SearchRequestsQuery query`
     - Validates inputs:
       - `page < 1` or `pageSize < 1` or `pageSize > 200` → `400` with message
@@ -113,7 +113,7 @@ Implement DB-level search, filter, sort and pagination on the existing `GET /api
 - [x] 12. Implement `RequestsService` (Angular)
   - Create `frontend/src/app/services/requests.service.ts`
   - Inject `HttpClient`; base URL configurable via `environment.apiUrl` (default: `http://localhost:5000`)
-  - Implement `search(query: SearchQuery, userId: number, isAdmin: boolean): Observable<PagedResult<RequestDto>>` that builds `HttpParams` from the query object (omitting null/undefined fields, serialising arrays as repeated params) and issues `GET /api/requests/search` with `X-User-Id` and `X-Is-Admin` headers
+  - Implement `search(query: SearchQuery): Observable<PagedResult<RequestDto>>` that builds `HttpParams` from the query object and issues `GET /api/requests/search` with `Authorization: Bearer <token>` header (מוסף אוטומטית על ידי `authInterceptor`)
   - _Requirements: 6.2, 6.3, 6.4_
 
 - [x] 13. Implement `SearchFilterComponent`
@@ -163,7 +163,7 @@ Implement DB-level search, filter, sort and pagination on the existing `GET /api
     - How to run the frontend: `cd frontend && npm install && ng serve`
     - How to run backend tests: `dotnet test`
     - Available API query parameters with types and defaults
-    - Authentication headers (`X-User-Id`, `X-Is-Admin`)
+    - Authentication: JWT Bearer token מתקבל מ-`POST /api/auth/login`
   - _Requirements: (documentation)_
 
 - [x] 19. Create `AI-usage.md`
@@ -173,7 +173,7 @@ Implement DB-level search, filter, sort and pagination on the existing `GET /api
     - Any AI-generated code that was reviewed/modified and why
   - _Requirements: (documentation)_
 
-- [ ] 20. Final checkpoint — full build and test pass
+- [x] 20. Final checkpoint — full build and test pass
   - Run `dotnet build` and `dotnet test` from the repo root; confirm all tests are green.
   - Run `ng build` from `frontend/`; confirm no build errors.
 
