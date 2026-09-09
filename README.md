@@ -44,6 +44,17 @@ dotnet test server/tests/Requests.Tests/Requests.Tests.csproj --logger "console;
 
 ---
 
+## הרצת בדיקות Frontend
+
+```bash
+cd frontend
+ng test --watch=false
+```
+
+6 בדיקות unit ל-`SearchFilterComponent` (Karma + Jasmine): אתחול טופס, debounce על requestNumber, סימון/ביטול status, ולידציית טווח תאריכים, ניקוי פילטרים.
+
+---
+
 ## טכנולוגיות שנבחרו ומדוע
 
 | טכנולוגיה | סיבה |
