@@ -123,6 +123,7 @@ ng test --watch=false
 - **SecretKey** — מוגדר ב-`appsettings.json` לצורך dev. בפרודקשן: Environment Variable / Azure Key Vault.
 - **משתמשים** — hard-coded ב-`AuthController`. בפרודקשן: טבלת `Users` עם סיסמאות BCrypt.
 - **SQLite** — מתאים לפיתוח ולהדגמה. בפרודקשן: החלפת שורה אחת ב-`DependencyInjection.cs` ל-`UseSqlServer`.
+- **EnsureCreated במקום Migrations** — יוצר את הטבלות והאינדקסים אוטומטית בהפעלה ראשונה. מתאים לפיתוח ולהדגמה. בפרודקשן: EF Core Migrations מנהל שינויים מצטברים בסכמה עם `Up()` ו-`Down()` לכל גרסה.
 - **Login UI** — דף הכניסה מציג כפתורי בחירת משתמש במקום טופס username/password, כדי להקל על הבוחן לעבור בין משתמשים ולבדוק הרשאות. התשתית קיימת במלואה — JWT, interceptor, 401 handling. בפרודקשן: טופס אמיתי מול טבלת Users עם BCrypt.
 
 ---
@@ -248,7 +249,6 @@ if (!isAdministrator)
 ### לא הוספתי
 - **בדיקות Integration** — הבדיקות הן unit tests ל-Service. בדיקות integration מול SQLite בזיכרון (EF Core Test Helpers) היו מוסיפות ביטחון שה-IQueryable pipeline מתורגם ל-SQL נכון.
 - **Outbox Pattern** — תוכנן ב-design.md, לא מומש. הצעד הבא לארכיטקטורת Microservices אמינה.
-- **EF Core Migrations** — השתמשתי ב-`EnsureCreated()` לפשטות — יוצר את הטבלות והאינדקסים אוטומטית בהפעלה ראשונה. בפרודקשן: Migrations מנהל שינויים מצטברים בסכמה עם `Up()` ו-`Down()` לכל גרסה.
 
 ### איך הייתי ממשיך
 1. בדיקות integration עם `WebApplicationFactory` + SQLite
