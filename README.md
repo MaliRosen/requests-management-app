@@ -4,6 +4,16 @@ Full-stack feature: חיפוש, סינון, מיון ועימוד ברמת ה-DB
 
 ---
 
+## סטטוס
+
+הפרויקט נבדק ורץ במלואו:
+- ✅ 16 בדיקות backend — כולן עוברות
+- ✅ Backend רץ על `http://localhost:5000`
+- ✅ Frontend רץ על `http://localhost:4200`
+- ✅ תקשורת מלאה בין frontend ל-backend אומתה
+
+---
+
 ## הרצת Backend
 
 ```bash
