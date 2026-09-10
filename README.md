@@ -123,6 +123,7 @@ ng test --watch=false
 - **SecretKey** — מוגדר ב-`appsettings.json` לצורך dev. בפרודקשן: Environment Variable / Azure Key Vault.
 - **משתמשים** — hard-coded ב-`AuthController`. בפרודקשן: טבלת `Users` עם סיסמאות BCrypt.
 - **SQLite** — מתאים לפיתוח ולהדגמה. בפרודקשן: החלפת שורה אחת ב-`DependencyInjection.cs` ל-`UseSqlServer`.
+- **Login UI** — דף הכניסה מציג כפתורי בחירת משתמש במקום טופס username/password, כדי להקל על הבוחן לעבור בין משתמשים ולבדוק הרשאות. התשתית קיימת במלואה — JWT, interceptor, 401 handling. בפרודקשן: טופס אמיתי מול טבלת Users עם BCrypt.
 
 ---
 
