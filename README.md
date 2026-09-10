@@ -248,6 +248,7 @@ if (!isAdministrator)
 ### לא הוספתי
 - **בדיקות Integration** — הבדיקות הן unit tests ל-Service. בדיקות integration מול SQLite בזיכרון (EF Core Test Helpers) היו מוסיפות ביטחון שה-IQueryable pipeline מתורגם ל-SQL נכון.
 - **Outbox Pattern** — תוכנן ב-design.md, לא מומש. הצעד הבא לארכיטקטורת Microservices אמינה.
+- **EF Core Migrations** — השתמשתי ב-`EnsureCreated()` לפשטות — יוצר את הטבלות והאינדקסים אוטומטית בהפעלה ראשונה. בפרודקשן: Migrations מנהל שינויים מצטברים בסכמה עם `Up()` ו-`Down()` לכל גרסה.
 
 ### איך הייתי ממשיך
 1. בדיקות integration עם `WebApplicationFactory` + SQLite
