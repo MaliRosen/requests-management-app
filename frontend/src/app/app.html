@@ -6,7 +6,13 @@
 
   <div class="app-header">
     <h1 class="app-title">ניהול בקשות</h1>
-    <button class="btn-logout" (click)="onLogout()">התנתק</button>
+    <div class="app-header-user">
+      <span class="user-info" *ngIf="currentUser">
+        משתמש {{ currentUser.userId }}
+        <span class="user-badge--admin" *ngIf="currentUser.isAdmin">מנהל</span>
+      </span>
+      <button class="btn-logout" (click)="onLogout()">התנתק</button>
+    </div>
   </div>
 
   <app-search-filter
@@ -35,7 +41,7 @@
   </app-requests-table>
 
   <app-pagination
-    *ngIf="!loading && result && !dateRangeError"
+    *ngIf="!loading && result && !dateRangeError && result.totalCount > 0"
     [page]="result.page"
     [pageSize]="result.pageSize"
     [totalCount]="result.totalCount"

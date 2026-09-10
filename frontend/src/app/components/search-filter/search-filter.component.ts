@@ -8,7 +8,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { takeUntil } from 'rxjs/operators';
 
 import { RequestStatus, RequestType } from '../../models/request.model';
 import { SearchQuery } from '../../models/search-query.model';
@@ -27,7 +27,6 @@ interface EnumOption<T> {
 })
 export class SearchFilterComponent implements OnInit, OnDestroy {
   @Output() filterChange = new EventEmitter<Partial<SearchQuery>>();
-  @Output() validationError = new EventEmitter<boolean>();
 
   form!: FormGroup;
 
@@ -60,22 +59,14 @@ export class SearchFilterComponent implements OnInit, OnDestroy {
       createdTo: [''],
     });
 
-    this.form.get('requestNumber')!
-      .valueChanges.pipe(
-        debounceTime(500),
-        distinctUntilChanged(),
-        takeUntil(this.destroy$),
-      )
-      .subscribe(() => this.emitFilter());
-
-    // האזנה לשני שדות התאריך — כל שינוי בכל אחד מהם מפעיל ולידציה מיידית
+    // ולידציה בזמן אמת על שינוי תאריך — מציג שגיאה מיד, לא מחכה ללחיצת חפש
     this.form.get('createdFrom')!.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.validateAndEmit());
+      .subscribe(() => this.validateDates());
 
     this.form.get('createdTo')!.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.validateAndEmit());
+      .subscribe(() => this.validateDates());
   }
 
   ngOnDestroy(): void {
@@ -85,12 +76,10 @@ export class SearchFilterComponent implements OnInit, OnDestroy {
 
   onStatusChange(value: RequestStatus, checked: boolean): void {
     checked ? this.selectedStatuses.add(value) : this.selectedStatuses.delete(value);
-    this.emitFilter();
   }
 
   onTypeChange(value: RequestType, checked: boolean): void {
     checked ? this.selectedTypes.add(value) : this.selectedTypes.delete(value);
-    this.emitFilter();
   }
 
   isStatusChecked(value: RequestStatus): boolean {
@@ -109,9 +98,22 @@ export class SearchFilterComponent implements OnInit, OnDestroy {
     this.filterChange.emit({});
   }
 
-  private validateAndEmit(): void {
+  search(): void {
+    if (this.validateDates()) return;
+    this.emitFilter();
+  }
+
+  private validateDates(): boolean {
+    const from = this.form.get('createdFrom')!.value;
+    const to = this.form.get('createdTo')!.value;
+
+    if (from && to && to < from) {
+      this.dateRangeError = 'תאריך סיום לא יכול להיות לפני תאריך התחלה';
+      return true;
+    }
+
     this.dateRangeError = null;
-    this.emitFilter(); // תמיד פולטים — app.ts מחליט אם לשלוח לשרת
+    return false;
   }
 
   private emitFilter(): void {
@@ -136,7 +138,6 @@ export class SearchFilterComponent implements OnInit, OnDestroy {
       filter.createdTo = raw.createdTo;
     }
 
-    console.log('emitFilter:', JSON.stringify(filter));
     this.filterChange.emit(filter);
   }
 }

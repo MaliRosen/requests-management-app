@@ -8,11 +8,13 @@
     <thead>
       <tr>
         <th *ngFor="let col of columns"
+            scope="col"
             (click)="onSort(col.key)"
             class="sortable-header"
-            [class.sorted]="col.key === sortBy">
+            [class.sorted]="col.key === sortBy"
+            [attr.aria-sort]="getAriaSort(col.key)">
           {{ col.label }}
-          <span class="sort-indicator">{{ getSortIndicator(col.key) }}</span>
+          <span class="sort-indicator" aria-hidden="true">{{ getSortIndicator(col.key) }}</span>
         </th>
       </tr>
     </thead>

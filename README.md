@@ -51,7 +51,19 @@ cd frontend
 ng test --watch=false
 ```
 
-6 בדיקות unit ל-`SearchFilterComponent` (Karma + Jasmine): אתחול טופס, debounce על requestNumber, סימון/ביטול status, ולידציית טווח תאריכים, ניקוי פילטרים.
+10 בדיקות unit ל-`SearchFilterComponent` (Karma + Jasmine): אתחול טופס, לחיצת חפש, סימון/ביטול status, ולידציית טווח תאריכים (כולל גבול ותיקון שגיאה), סינון משולב, טופס ריק, ניקוי פילטרים.
+
+---
+
+## תכונות Frontend
+
+- **טופס סינון** — חיפוש לפי מספר בקשה, סטטוס (checkboxes מרובים), סוג בקשה, טווח תאריכים
+- **ולידציה בזמן אמת** — שגיאת טווח תאריכים מוצגת מיד עם השינוי, כפתור "חפש" מנוטרל בזמן שגיאה
+- **טבלת תוצאות** — מיון לפי כל עמודה בלחיצה, חץ כיוון, תוויות בעברית לסטטוס וסוג
+- **Pagination** — ניווט בין עמודים, מוסתרת כש-0 תוצאות
+- **חיווי טעינה** — spinner בזמן קריאה לשרת
+- **חיווי שגיאה** — הודעת שגיאה ברורה, logout אוטומטי ב-401
+- **זיהוי משתמש** — שם משתמש ו-badge "מנהל" בheader
 
 ---
 
@@ -63,7 +75,7 @@ ng test --watch=false
 | **EF Core + IQueryable** | סינון ב-SQL, לא בזיכרון — קריטי למיליוני רשומות |
 | **SQLite** | בסיס נתונים אמיתי עם קובץ יחיד — אינדקסים פועלים בפועל, אין התקנה |
 | **Angular 17 (NgModule)** | שומר עקביות עם הקוד הקיים |
-| **ReactiveFormsModule** | debounce על שדה הטקסט בלי קוד נוסף |
+| **ReactiveFormsModule** | ניהול טופס הסינון — ולידציה בקוד TypeScript, האזנה לשינויי תאריך בזמן אמת |
 
 ---
 
@@ -104,7 +116,31 @@ ng test --watch=false
 
 ---
 
-## החלטה טכנית 1: IQueryable pipeline במקום סינון in-memory
+## החלטה טכנית 1: Pagination ברמת ה-DB
+
+עם מיליוני רשומות, pagination הוא הדבר הכי קריטי לביצועים — לפניו אפילו אינדקסים מושלמים לא יעזרו, כי עדיין מחזירים מיליון שורות ברשת.
+
+הפתרון: `CountAsync` לפני החיתוך (כדי ש-`totalCount` ייצג את סך הרשומות התואמות), ואז `Skip/Take` כחלק מה-`IQueryable` — הכל מתורגם ל-SQL אחד שמחזיר בדיוק `pageSize` שורות:
+
+```csharp
+var totalCount = await query.CountAsync();
+var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+```
+
+```sql
+-- מה שרץ בפועל:
+SELECT * FROM Requests WHERE ...
+ORDER BY CreatedAt DESC
+OFFSET 0 ROWS FETCH NEXT 20 ROWS ONLY;  -- 20 שורות בלבד, לא מיליון
+```
+
+`pageSize` מוגבל ל-200 — מגן מפני `pageSize=999999` שיעקוף את כל ההגנה.
+
+בקליינט: כל שינוי פילטר מאפס ל-`page=1`, הפקינציה מוסתרת כש-`totalCount=0`.
+
+---
+
+## החלטה טכנית 2: IQueryable pipeline במקום סינון in-memory
 
 ### החלופות
 
@@ -130,7 +166,7 @@ var items = await q.Skip(...).Take(...).ToListAsync(); // מחזיר 20 שורו
 
 ---
 
-## החלטה טכנית 2: SQLite במקום InMemory
+## החלטה טכנית 3: SQLite במקום InMemory
 
 ### הבעיה עם InMemory
 
@@ -168,6 +204,34 @@ options.UseSqlServer(connectionString)
 
 ---
 
+## הרשאות — Admin vs משתמש רגיל
+
+הדרישה מחייבת אכיפת הרשאות **בצד השרת בלבד** — הקליינט לא יכול לעקוף אותן.
+
+### איך זה עובד
+
+ה-JWT token מכיל שני claims: `userId` ו-`isAdmin`. הקליינט לא שולח אותם כ-headers — הם נחתמים בתוך ה-token ב-login ואי אפשר לזייף אותם.
+
+ה-Controller חולץ אותם:
+```csharp
+var userIdClaim = User.FindFirst("userId")?.Value;
+var isAdminClaim = User.FindFirst("isAdmin")?.Value;
+```
+
+ה-Repository מיישם את הסינון ישירות ב-`IQueryable` לפני ביצוע השאילתה ב-DB:
+```csharp
+if (!isAdministrator)
+    query = query.Where(r => r.OwnerId == userId || r.AssignedToUserId == userId);
+```
+
+כלומר משתמש רגיל **פיזית לא יכול לקבל** רשומות של אחרים — גם אם ישלח בקשה ישירה ל-API עם פילטרים מניפולטיביים.
+
+### למה ב-Repository ולא ב-Service
+
+אפשר היה לסנן ב-Service אחרי קבלת הנתונים — אבל אז ה-pagination יהיה לא נכון. אם יש 100 רשומות ב-DB ו-80 שייכות למשתמש אחר, סינון in-memory אחרי `Take(20)` יחזיר פחות מ-20 תוצאות. סינון ב-`IQueryable` מבטיח ש-`totalCount` ו-pagination מדויקים.
+
+---
+
 ## מה לא הספקתי ואיך הייתי ממשיך
 
 ### לא הוספתי
@@ -189,7 +253,30 @@ architecture.md
 ```
 כולל: חלוקה לשירותים, תרשים, תועלות, ותכנון Notification עם Transactional Outbox Pattern.
 
-## החלטה טכנית 4: JWT Authentication
+## החלטה טכנית 4: כפתור חיפוש במקום Live Filtering
+
+### מה שנבחר
+
+הטופס שולח בקשה לשרת רק בלחיצה על כפתור "חפש" — לא על כל שינוי בשדה.
+
+### למה
+
+המערכת מניחה מיליוני רשומות. כל קריאה לשרת מריצה SQL עם joins ואינדקסים — לא פעולה זולה. עם live filtering, מילוי טופס עם 3 פילטרים שונים מייצר 3+ קריאות לשרת. עם כפתור — קריאה אחת בלבד אחרי שהמשתמש סיים להגדיר את כל הפילטרים.
+
+בנוסף, `switchMap` מבטל קריאה ישנה בצד הקליינט — אבל השרת כבר התחיל להריץ את ה-SQL. הביטול לא חוסך עומס מהשרת.
+
+### חלופה — Live Filtering
+
+אם חוויית המשתמש חשובה יותר מביצועים (למשל — מאגר נתונים קטן, או שהמשתמשים מצפים לתגובה מיידית), אפשר לעבור ל-live filtering:
+- הוסף `valueChanges` עם `debounce(500ms)` ו-`distinctUntilChanged` על כל שדה
+- הוסף `switchMap` ב-`app.ts` — מבטל קריאה קודמת כשיוצאת חדשה
+- הסר את כפתור "חפש"
+
+זה שינוי של ~15 שורות קוד. הבחירה תלויה בפרופיל המשתמשים ובגודל הנתונים.
+
+---
+
+## החלטה טכנית 5: JWT Authentication
 
 ### מה שנבנה
 
@@ -223,7 +310,7 @@ Token ב-`localStorage` חשוף ל-XSS — כל JavaScript זדוני בדפד�
 
 ---
 
-## החלטה טכנית 5: ערכי סינון hard-coded בקליינט
+## החלטה טכנית 6: ערכי סינון hard-coded בקליינט
 
 ### המצב הנוכחי
 

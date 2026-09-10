@@ -54,4 +54,9 @@ export class RequestsTableComponent {
     if (column !== this.sortBy) return '';
     return this.sortDirection === 'asc' ? '▲' : '▼';
   }
+
+  getAriaSort(column: string): string {
+    if (column !== this.sortBy) return 'none';
+    return this.sortDirection === 'asc' ? 'ascending' : 'descending';
+  }
 }

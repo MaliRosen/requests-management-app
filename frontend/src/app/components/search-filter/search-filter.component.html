@@ -71,8 +71,11 @@
     {{ dateRangeError }}
   </div>
 
-  <!-- כפתור נקה -->
+  <!-- כפתורי פעולה -->
   <div class="filter-actions">
+    <button type="button" class="btn-search" (click)="search()" [disabled]="!!dateRangeError">
+      חפש
+    </button>
     <button type="button" class="btn-clear" (click)="clearFilters()">
       נקה סינון
     </button>

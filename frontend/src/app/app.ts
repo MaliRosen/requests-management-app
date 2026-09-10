@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Subject, of } from 'rxjs';
 import { switchMap, finalize, catchError } from 'rxjs/operators';
 
-import { AuthService } from './services/auth.service';
+import { AuthService, CurrentUser } from './services/auth.service';
 import { RequestsService } from './services/requests.service';
 import { SearchQuery } from './models/search-query.model';
 import { PagedResult } from './models/paged-result.model';
@@ -28,6 +28,7 @@ import { LoginComponent } from './components/login/login.component';
 })
 export class App implements OnInit {
   isLoggedIn = false;
+  currentUser: CurrentUser | null = null;
 
   query: SearchQuery = {
     sortBy: 'CreatedAt',
@@ -50,6 +51,7 @@ export class App implements OnInit {
 
   ngOnInit(): void {
     this.isLoggedIn = this.authService.isLoggedIn();
+    this.currentUser = this.authService.getCurrentUser();
 
     this.searchTrigger$.pipe(
       switchMap(query => {
@@ -85,30 +87,20 @@ export class App implements OnInit {
 
   onLoggedIn(): void {
     this.isLoggedIn = true;
+    this.currentUser = this.authService.getCurrentUser();
     this.loadRequests();
   }
 
   onLogout(): void {
     this.authService.logout();
     this.isLoggedIn = false;
+    this.currentUser = null;
     this.result = null;
     this.error = null;
     this.dateRangeError = null;
   }
 
   onFilterChange(changes: Partial<SearchQuery>): void {
-    const from = changes.createdFrom;
-    const to = changes.createdTo;
-
-    if (from && to) {
-      const fromDate = new Date(from);
-      const toDate = new Date(to);
-      if (toDate < fromDate) {
-        this.dateRangeError = '"עד תאריך" חייב להיות אחרי "מתאריך"';
-        return;
-      }
-    }
-
     this.dateRangeError = null;
     this.error = null;
     this.query = {

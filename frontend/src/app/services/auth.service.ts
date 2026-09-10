@@ -7,6 +7,11 @@ interface LoginResponse {
   token: string;
 }
 
+export interface CurrentUser {
+  userId: number;
+  isAdmin: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly tokenKey = 'jwt_token';
@@ -30,5 +35,22 @@ export class AuthService {
 
   isLoggedIn(): boolean {
     return !!this.getToken();
+  }
+
+  getCurrentUser(): CurrentUser | null {
+    const token = this.getToken();
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return {
+        userId: Number(payload['userId']),
+        isAdmin: payload['isAdmin'] === 'true' || payload['isAdmin'] === true,
+      };
+    } catch {
+      // token פגום — מנקים אותו כדי לא להישאר במצב "מחובר" עם token לא תקין
+      this.logout();
+      return null;
+    }
   }
 }

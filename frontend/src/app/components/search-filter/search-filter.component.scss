@@ -81,7 +81,28 @@
 .filter-actions {
   margin-top: 1rem;
   display: flex;
+  gap: 0.75rem;
   justify-content: flex-end;
+}
+
+.btn-search {
+  padding: 0.4rem 1.25rem;
+  font-size: 0.85rem;
+  color: #fff;
+  background: #3b82f6;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #2563eb;
+  }
+
+  &:disabled {
+    background: #93c5fd;
+    cursor: not-allowed;
+  }
 }
 
 .btn-clear {

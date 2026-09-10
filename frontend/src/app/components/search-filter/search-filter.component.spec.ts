@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { SearchFilterComponent } from './search-filter.component';
 import { RequestStatus, RequestType } from '../../models/request.model';
@@ -28,55 +28,45 @@ describe('SearchFilterComponent', () => {
     expect(component.selectedTypes.size).toBe(0);
   });
 
-  // 2 — שינוי requestNumber פולט filterChange אחרי debounce של 500ms
-  it('should emit filterChange after 500ms debounce on requestNumber change', fakeAsync(() => {
+  // 2 — לחיצה על חפש פולטת filterChange עם הערכים הנוכחיים
+  it('should emit filterChange on search() call', () => {
     const emitted: any[] = [];
     component.filterChange.subscribe(f => emitted.push(f));
 
     component.form.get('requestNumber')!.setValue('REQ');
-    tick(499);
-    expect(emitted.length).toBe(0); // טרם עבר הdebounce
+    component.search();
 
-    tick(1);
     expect(emitted.length).toBe(1);
     expect(emitted[0].requestNumber).toBe('REQ');
-  }));
+  });
 
-  // 3 — סימון status מוסיף אותו לסט ופולט filterChange
-  it('should add status to selectedStatuses and emit filterChange on check', () => {
-    const emitted: any[] = [];
-    component.filterChange.subscribe(f => emitted.push(f));
-
+  // 3 — סימון status מוסיף אותו לסט (ללא פליטה — רק בלחיצה על חפש)
+  it('should add status to selectedStatuses on check', () => {
     component.onStatusChange(RequestStatus.New, true);
-
     expect(component.selectedStatuses.has(RequestStatus.New)).toBeTrue();
-    expect(emitted.length).toBe(1);
-    expect(emitted[0].status).toContain(RequestStatus.New);
   });
 
   // 4 — ביטול סימון status מסיר אותו מהסט
   it('should remove status from selectedStatuses on uncheck', () => {
     component.onStatusChange(RequestStatus.New, true);
     component.onStatusChange(RequestStatus.New, false);
-
     expect(component.selectedStatuses.has(RequestStatus.New)).toBeFalse();
   });
 
   // 5 — תאריך "עד" לפני "מתאריך" פולט שגיאת ולידציה ולא פולט filterChange
-  it('should emit validationError=true when createdTo is before createdFrom', () => {
+  it('should emit validationError=true and not emit filterChange when createdTo is before createdFrom', () => {
     const errors: boolean[] = [];
     const filters: any[] = [];
     component.validationError.subscribe(e => errors.push(e));
     component.filterChange.subscribe(f => filters.push(f));
 
     component.form.get('createdFrom')!.setValue('2024-06-10');
-    component.form.get('createdTo')!.setValue('2024-06-01'); // לפני createdFrom
+    component.form.get('createdTo')!.setValue('2024-06-01');
+    component.search();
 
     expect(errors).toContain(true);
     expect(component.dateRangeError).toBeTruthy();
-    // filterChange לא אמור להיפלט כשיש שגיאת ולידציה
-    const invalidEmits = filters.filter(f => f.createdTo === '2024-06-01');
-    expect(invalidEmits.length).toBe(0);
+    expect(filters.length).toBe(0);
   });
 
   // 6 — clearFilters מאפס את כל השדות ופולט filterChange עם אובייקט ריק
@@ -97,5 +87,62 @@ describe('SearchFilterComponent', () => {
 
     const lastEmit = emitted[emitted.length - 1];
     expect(lastEmit).toEqual({});
+  });
+
+  // 7 — תאריכים שווים (גבול) — תקין, לא שגיאה
+  it('should not emit validationError when createdFrom equals createdTo', () => {
+    const errors: boolean[] = [];
+    const filters: any[] = [];
+    component.validationError.subscribe(e => errors.push(e));
+    component.filterChange.subscribe(f => filters.push(f));
+
+    component.form.get('createdFrom')!.setValue('2024-06-10');
+    component.form.get('createdTo')!.setValue('2024-06-10');
+    component.search();
+
+    expect(component.dateRangeError).toBeNull();
+    expect(filters.length).toBe(1);
+    expect(errors).not.toContain(true);
+  });
+
+  // 8 — סינון משולב — status + requestType + requestNumber נפלטים ביחד
+  it('should emit combined filter with status, requestType and requestNumber', () => {
+    const emitted: any[] = [];
+    component.filterChange.subscribe(f => emitted.push(f));
+
+    component.form.get('requestNumber')!.setValue('REQ-001');
+    component.onStatusChange(RequestStatus.New, true);
+    component.onStatusChange(RequestStatus.InProgress, true);
+    component.onTypeChange(RequestType.Legal, true);
+    component.search();
+
+    expect(emitted.length).toBe(1);
+    expect(emitted[0].requestNumber).toBe('REQ-001');
+    expect(emitted[0].status).toContain(RequestStatus.New);
+    expect(emitted[0].status).toContain(RequestStatus.InProgress);
+    expect(emitted[0].requestType).toContain(RequestType.Legal);
+  });
+
+  // 9 — אחרי שגיאת ולידציה, תיקון התאריך ולחיצת חפש מנקים את השגיאה
+  it('should clear validationError after fixing date range and calling search', () => {
+    component.form.get('createdFrom')!.setValue('2024-06-10');
+    component.form.get('createdTo')!.setValue('2024-06-01');
+    component.search();
+    expect(component.dateRangeError).toBeTruthy();
+
+    component.form.get('createdTo')!.setValue('2024-06-15');
+    component.search();
+    expect(component.dateRangeError).toBeNull();
+  });
+
+  // 10 — search עם טופס ריק פולט אובייקט ריק
+  it('should emit empty filter object when form is empty', () => {
+    const emitted: any[] = [];
+    component.filterChange.subscribe(f => emitted.push(f));
+
+    component.search();
+
+    expect(emitted.length).toBe(1);
+    expect(emitted[0]).toEqual({});
   });
 });
